@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Chat Search</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1000px;
+            height: 90vh;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            display: flex;
+            overflow: hidden;
+            flex-direction: column;
+        }
+
+        .chat-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            min-height: 0; /* Quan trọng cho flexbox scroll */
+        }
+
+        .chat-header {
+            padding: 20px;
+            background: #667eea;
+            color: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0; /* Không cho header co lại */
+        }
+
+        .chat-header h1 {
+            font-size: 24px;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto; /* Bật thanh cuộn dọc */
+            overflow-x: hidden; /* Tắt thanh cuộn ngang */
+            padding: 20px;
+            background: #f7f9fc;
+            scroll-behavior: smooth;
+            min-height: 0; /* Quan trọng cho flexbox scroll */
+        }
+
+        /* Style thanh cuộn */
+        .chat-messages::-webkit-scrollbar {
+            width: 10px;
+        }
+
+        .chat-messages::-webkit-scrollbar-track {
+            background: #e1e8ed;
+            border-radius: 5px;
+        }
+
+        .chat-messages::-webkit-scrollbar-thumb {
+            background: #667eea;
+            border-radius: 5px;
+            transition: background 0.3s;
+        }
+
+        .chat-messages::-webkit-scrollbar-thumb:hover {
+            background: #5568d3;
+        }
+
+        .message {
+            margin-bottom: 20px;
+            animation: fadeIn 0.3s;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message-user {
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        .message-ai {
+            display: flex;
+            justify-content: flex-start;
+        }
+
+        .message-content {
+            max-width: 70%;
+            padding: 12px 16px;
+            border-radius: 12px;
+            line-height: 1.5;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+
+        .message-user .message-content {
+            background: #667eea;
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+
+        .message-ai .message-content {
+            background: white;
+            color: #333;
+            border-bottom-left-radius: 4px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .search-results {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 12px;
+            margin-top: 8px;
+            border-radius: 8px;
+        }
+
+        .search-results-title {
+            font-weight: 600;
+            color: #856404;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .search-result-item {
+            background: white;
+            padding: 12px;
+            margin-bottom: 10px;
+            border-radius: 6px;
+            font-size: 13px;
+            color: #333;
+            border-left: 3px solid #667eea;
+            line-height: 1.6;
+        }
+
+        .chat-input-area {
+            padding: 20px;
+            background: white;
+            border-top: 1px solid #e1e8ed;
+            flex-shrink: 0; /* Không cho input area co lại */
+        }
+
+        .input-container {
+            display: flex;
+            gap: 10px;
+        }
+
+        .chat-input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid #e1e8ed;
+            border-radius: 12px;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .chat-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .send-btn {
+            padding: 12px 24px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .send-btn:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .send-btn:active {
+            transform: translateY(0);
+        }
+
+        .loading {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #667eea;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.3;
+            }
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 0;
+            }
+
+            .container {
+                height: 100vh;
+                max-height: 100vh;
+                border-radius: 0;
+            }
+
+            .message-content {
+                max-width: 85%;
+            }
+
+            .chat-header h1 {
+                font-size: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Chat Area (No Sidebar) -->
+        <div class="chat-area">
+            <div class="chat-header">
+                <h1>💬 AI Chat Assistant</h1>
+            </div>
+            <div class="chat-messages" id="chatMessages">
+                <div class="message message-ai">
+                    <div class="message-content">
+                        Xin chào! 👋 Tôi là trợ lý AI. Hãy nhập câu hỏi để tìm kiếm thông tin.
+                    </div>
+                </div>
+            </div>
+            <div class="chat-input-area">
+                <div class="input-container">
+                    <input 
+                        type="text" 
+                        class="chat-input" 
+                        id="chatInput" 
+                        placeholder="Nhập câu hỏi hoặc từ khóa để tìm kiếm..."
+                        onkeypress="handleKeyPress(event)"
+                    >
+                    <button class="send-btn" id="sendBtn" onclick="sendMessage()">Gửi</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Lưu trữ dữ liệu
+        let dataStore = [];
+        const API_URL = '/api/data';
+
+        // Load dữ liệu từ server khi trang load
+        window.onload = function() {
+            fetchData();
+        };
+
+        // Lấy dữ liệu từ API
+        async function fetchData() {
+            try {
+                const response = await fetch(API_URL);
+                dataStore = await response.json();
+            } catch (error) {
+                console.error('Error fetching data:', error);
+                addMessage('ai', '⚠️ Lỗi kết nối đến server. Đang sử dụng dữ liệu mẫu...');
+                
+                // Dữ liệu mẫu để test
+                dataStore = [
+                    {
+                        id: 1,
+                        title: "Giới thiệu về AI",
+                        content: "Trí tuệ nhân tạo (AI) là lĩnh vực khoa học máy tính tập trung vào việc tạo ra các hệ thống có khả năng thực hiện các tác vụ thông minh như con người.",
+                        date: new Date().toLocaleString('vi-VN')
+                    },
+                    {
+                        id: 2,
+                        title: "Machine Learning cơ bản",
+                        content: "Machine Learning là một nhánh của AI cho phép máy tính học từ dữ liệu mà không cần được lập trình cụ thể. Có 3 loại chính: học có giám sát, học không giám sát và học tăng cường.",
+                        date: new Date().toLocaleString('vi-VN')
+                    },
+                    {
+                        id: 3,
+                        title: "Deep Learning là gì?",
+                        content: "Deep Learning là một phương pháp machine learning sử dụng mạng nơ-ron nhân tạo với nhiều lớp. Nó đặc biệt hiệu quả trong xử lý hình ảnh, âm thanh và ngôn ngữ tự nhiên.",
+                        date: new Date().toLocaleString('vi-VN')
+                    }
+                ];
+            }
+        }
+
+        // Tìm kiếm dữ liệu
+        function searchData(query) {
+            const queryLower = query.toLowerCase();
+            const results = [];
+            
+            dataStore.forEach(data => {
+                const titleMatch = data.title.toLowerCase().includes(queryLower);
+                const contentMatch = data.content.toLowerCase().includes(queryLower);
+                
+                if (titleMatch || contentMatch) {
+                    results.push({
+                        title: data.title,
+                        content: data.content,
+                        date: data.date
+                    });
+                }
+            });
+            
+            return results;
+        }
+
+        // Gửi tin nhắn
+        function sendMessage() {
+            const input = document.getElementById('chatInput');
+            const message = input.value.trim();
+            
+            if (!message) return;
+            
+            addMessage('user', message);
+            input.value = '';
+            
+            // Disable button và input trong lúc xử lý
+            const sendBtn = document.getElementById('sendBtn');
+            sendBtn.disabled = true;
+            sendBtn.innerHTML = '<span class="loading"></span> Đang tìm...';
+            input.disabled = true;
+            
+            // Tìm kiếm
+            setTimeout(() => {
+                const results = searchData(message);
+                
+                if (results.length > 0) {
+                    let response = `Tôi đã tìm thấy <strong>${results.length}</strong> kết quả phù hợp với "<em>${message}</em>":`;
+                    
+                    response += '<div class="search-results">';
+                    response += '<div class="search-results-title">📋 Kết quả tìm kiếm:</div>';
+                    
+                    results.forEach((result, index) => {
+                        response += `
+                            <div class="search-result-item">
+                                <strong>${index + 1}. ${result.title}</strong><br>
+                                <div style="margin-top: 8px; line-height: 1.6; white-space: pre-wrap;">${result.content}</div><br>
+                                <small style="color: #999;">📅 Lưu lúc: ${result.date}</small>
+                            </div>
+                        `;
+                    });
+                    
+                    response += '</div>';
+                    
+                    addMessage('ai', response);
+                } else {
+                    addMessage('ai', `Không tìm thấy kết quả nào cho "<em>${message}</em>". Bạn có thể thử với từ khóa khác như "AI", "Machine Learning", hoặc "Deep Learning".`);
+                }
+                
+                // Enable lại button và input
+                sendBtn.disabled = false;
+                sendBtn.textContent = 'Gửi';
+                input.disabled = false;
+                input.focus();
+            }, 500);
+        }
+
+        // Thêm tin nhắn vào chat
+        function addMessage(type, content) {
+            const messagesDiv = document.getElementById('chatMessages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message message-${type}`;
+            messageDiv.innerHTML = `<div class="message-content">${content}</div>`;
+            messagesDiv.appendChild(messageDiv);
+            
+            // Tự động cuộn xuống cuối
+            setTimeout(() => {
+                messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            }, 100);
+        }
+
+        // Xử lý phím Enter
+        function handleKeyPress(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                sendMessage();
+            }
+        }
+
+        // Focus vào input khi load trang
+        document.getElementById('chatInput').focus();
+    </script>
+</body>
+</html>
